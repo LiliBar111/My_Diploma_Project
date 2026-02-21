@@ -38,6 +38,40 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         return User.objects.create_user(**validated_data)
 
 
+class ShopSerializer(serializers.ModelSerializer):
+    """Сериализатор для магазинов"""
+    class Meta:
+        model = Shop
+        fields = ('id', 'name', 'state')
+
+
+class CategorySerializer(serializers.ModelSerializer):
+    """Сериализатор для категорий"""
+    class Meta:
+        model = Category
+        fields = ('id', 'name')
+
+
+class ProductSerializer(serializers.ModelSerializer):
+    """Базовый сериализатор для товаров"""
+    class Meta:
+        model = Product
+        fields = ('id', 'name')
+
+
+class ProductInfoSerializer(serializers.ModelSerializer):
+    """
+    Сериализатор для информации о товаре от конкретного магазина.
+    Включаю вложенные объекты product и shop.
+    """
+    product = ProductSerializer(read_only=True)
+    shop = ShopSerializer(read_only=True)
+
+    class Meta:
+        model = ProductInfo
+        fields = ('id', 'product', 'shop', 'quantity', 'price', 'price_rrc')
+
+
 class ContactSerializer(serializers.ModelSerializer):
     """Сериализатор для контактов пользователя"""
     class Meta:
@@ -77,7 +111,7 @@ class OrderSerializer(serializers.ModelSerializer):
 
 
 class BasketSerializer(serializers.ModelSerializer):
-    """Сериализатор для корзины (специальный случай заказа)"""
+    """Сериализатор для корзины"""
     items = OrderItemSerializer(source='ordered_items', many=True, read_only=True)
     total_price = serializers.IntegerField(read_only=True)
 
