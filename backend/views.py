@@ -20,7 +20,7 @@ from .serializers import (
 def register_user(request):
     """Регистрация нового пользователя"""
     serializer = UserRegistrationSerializer(data=request.data)
-    if serializer.is_valid():
+    if serializer.is_valid()
         serializer.save()
         return Response({'status': True}, status=201)
     return Response({'status': False, 'errors': serializer.errors}, status=400)
