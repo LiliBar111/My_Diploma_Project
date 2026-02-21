@@ -18,3 +18,18 @@ def create_confirm_token(sender, instance, created, **kwargs):
     """
     if created and not instance.is_active:
         ConfirmEmailToken.objects.create(user=instance)
+
+
+@receiver(reset_password_token_created)
+def password_reset_token_created(sender, instance, reset_password_token, **kwargs):
+    """
+    При создании токена сброса пароля отправляю его на email.
+    Использую готовую библиотеку django-rest-passwordreset.
+    """
+    send_mail(
+        'Сброс пароля',
+        f'Токен для сброса пароля: {reset_password_token.key}',
+        settings.DEFAULT_FROM_EMAIL,
+        [reset_password_token.user.email],
+        fail_silently=False,
+    )
