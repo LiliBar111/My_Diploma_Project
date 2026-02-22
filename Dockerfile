@@ -18,3 +18,14 @@ RUN apt-get update && apt-get install -y \
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
     pip install -r requirements.txt
+
+# Копирую весь проект
+COPY . /app/
+
+# Создаю непривилегированного пользователя для безопасности
+RUN adduser --disabled-password --gecos '' appuser
+RUN chown -R appuser:appuser /app
+USER appuser
+
+# Запускаю сервер (команда переопределяется в docker-compose)
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
