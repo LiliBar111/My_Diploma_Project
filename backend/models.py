@@ -88,6 +88,18 @@ class User(AbstractUser):
     def __str__(self):
         return self.email
 
+
+class Shop(models.Model):
+    """Модель магазина/поставщика"""
+    name = models.CharField(max_length=50)
+    url = models.URLField(null=True, blank=True)  # Ссылка на прайс-лист
+    user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, blank=True)
+    state = models.BooleanField(default=True)  # Включен ли прием заказов
+
+    def __str__(self):
+        return self.name
+
+
 class Category(models.Model):
     """Категория товаров"""
     name = models.CharField(max_length=40)
@@ -95,6 +107,16 @@ class Category(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Product(models.Model):
+    """Товар"""
+    name = models.CharField(max_length=80)
+    category = models.ForeignKey(Category, related_name='products', on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
+
 
 class ProductInfo(models.Model):
     """
@@ -115,6 +137,15 @@ class ProductInfo(models.Model):
             models.UniqueConstraint(fields=['product', 'shop', 'external_id'], name='unique_product_info'),
         ]
 
+
+class Parameter(models.Model):
+    """Характеристика товара (цвет, размер и т.д.)"""
+    name = models.CharField(max_length=40)
+
+    def __str__(self):
+        return self.name
+
+
 class ProductParameter(models.Model):
     """Значение параметра для конкретного товара от конкретного магазина"""
     product_info = models.ForeignKey(ProductInfo, related_name='product_parameters', on_delete=models.CASCADE)
@@ -127,12 +158,21 @@ class ProductParameter(models.Model):
             models.UniqueConstraint(fields=['product_info', 'parameter'], name='unique_product_parameter'),
         ]
 
+
 class Contact(models.Model):
     """Контактная информация пользователя для доставки"""
     user = models.ForeignKey(User, related_name='contacts', on_delete=models.CASCADE)
     city = models.CharField(max_length=50)
     street = models.CharField(max_length=100)
     house = models.CharField(max_length=15)
+    structure = models.CharField(max_length=15, blank=True)  # Корпус
+    building = models.CharField(max_length=15, blank=True)  # Строение
+    apartment = models.CharField(max_length=15, blank=True)  # Квартира
+    phone = models.CharField(max_length=20)
+
+    def __str__(self):
+        return f'{self.city}, {self.street} {self.house}'
+
 
 class Order(models.Model):
     """Заказ"""
@@ -148,3 +188,40 @@ class Order(models.Model):
     def total_price(self):
         """Вычисляемая сумма заказа"""
         return sum(item.total_price for item in self.ordered_items.all())
+
+
+class OrderItem(models.Model):
+    """Позиция в заказе"""
+    order = models.ForeignKey(Order, related_name='ordered_items', on_delete=models.CASCADE)
+    product_info = models.ForeignKey(ProductInfo, related_name='ordered_items', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
+
+    class Meta:
+        # В одном заказе не может быть двух одинаковых товаров
+        constraints = [
+            models.UniqueConstraint(fields=['order', 'product_info'], name='unique_order_item'),
+        ]
+
+    @property
+    def total_price(self):
+        """Стоимость позиции"""
+        return self.product_info.price_rrc * self.quantity
+
+
+class ConfirmEmailToken(models.Model):
+    """Токен для подтверждения email при регистрации"""
+
+    @staticmethod
+    def generate_key():
+        """Генерирую уникальный токен"""
+        return get_token_generator().generate_token()
+
+    user = models.ForeignKey(User, related_name='confirm_email_tokens', on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    key = models.CharField(max_length=64, db_index=True, unique=True)
+
+    def save(self, *args, **kwargs):
+        """При сохранении генерирую ключ если его нет"""
+        if not self.key:
+            self.key = self.generate_key()
+        return super().save(*args, **kwargs)
