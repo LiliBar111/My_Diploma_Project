@@ -1,0 +1,36 @@
+version: '3.8'  # Использую последнюю стабильную версию
+
+services:
+  db:
+    image: postgres:15  # PostgreSQL 15
+    container_name: orders_db
+    restart: unless-stopped  # Автоматически перезапускать при падении
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # Сохраняю данные между перезапусками
+    environment:
+      POSTGRES_DB: ${DB_NAME:-orders_db}
+      POSTGRES_USER: ${DB_USER:-orders_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-orders_password}
+    ports:
+      - "5432:5432"  # Пробрасываю порт для доступа с хоста
+    networks:
+      - orders_network
+    healthcheck:  # Проверяю, что БД готова к работе
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-orders_user}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine  # Использую alpine для экономии места
+    container_name: orders_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - orders_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
