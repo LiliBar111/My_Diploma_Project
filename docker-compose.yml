@@ -73,3 +73,10 @@ services:
         condition: service_healthy
     networks:
       - orders_network
+
+volumes:
+  postgres_data:  # для хранения данных БД
+
+networks:
+  orders_network:
+    driver: bridge  # Использю bridge сеть для изоляции
