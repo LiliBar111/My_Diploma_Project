@@ -32,3 +32,48 @@ def send_order_confirmation_email(order_id):
         )
     except Order.DoesNotExist:
         logger.error(f"Заказ {order_id} не найден")
+
+
+@shared_task
+def process_import_task(shop_id, url=None, file_content=None):
+    """
+    Асинхронный импорт товаров из YAML файла.
+    Может занимать много времени, поэтому выполняю в фоне.
+    """
+    try:
+        shop = Shop.objects.get(id=shop_id)
+
+        # Загружаю данные из URL или из файла
+        data = None
+        if url:
+            response = requests.get(url)
+            data = yaml.safe_load(response.text)
+        elif file_content:
+            data = yaml.safe_load(file_content.decode('utf-8'))
+
+        if not data:
+            return
+
+        # Использую транзакцию для целостности данных
+        with transaction.atomic():
+            # Удаляю старые товары этого магазина
+            ProductInfo.objects.filter(shop=shop).delete()
+
+            # Создаю новые товары из YAML
+            for item in data.get('goods', []):
+                product, _ = Product.objects.get_or_create(
+                    name=item['name'],
+                    defaults={'category_id': item['category']}
+                )
+
+                ProductInfo.objects.create(
+                    product=product,
+                    shop=shop,
+                    external_id=item['id'],
+                    quantity=item['quantity'],
+                    price=item['price'],
+                    price_rrc=item.get('price_rrc', item['price'])
+                )
+
+    except Exception as e:
+        logger.error(f"Ошибка импорта: {str(e)}")
