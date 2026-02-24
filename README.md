@@ -43,22 +43,22 @@ Backend-приложение для автоматизации закупок.
 ### Требования
 - Docker 20.10+ и Docker Compose 2.0+
 
-### Команды для запуска
+# Команды для запуска
 
-# 1. Клонируем репозиторий
+## 1. Клонируем репозиторий
 git clone <url-репозитория>
 cd orders
 
-# 2. Создаем .env файл
+## 2. Создаем .env файл
 cp .env.example .env
 
-# 3. Запускаем контейнеры
+## 3. Запускаем контейнеры
 docker-compose up -d --build
 
-# 4. Проверяем что все работает
+## 4. Проверяем что все работает
 docker-compose ps
 
-# 5. Открываем в браузере
+## 5. Открываем в браузере
 echo "Админка: http://localhost:8000/admin/"
 echo "API: http://localhost:8000/api/v1/"
 echo "Документация: http://localhost:8000/swagger/"
@@ -71,19 +71,19 @@ Email: admin@example.com
 
 Полезные команды Docker
 
-# Просмотр логов
+### Просмотр логов
 docker-compose logs -f
 
-# Остановка
+### Остановка
 docker-compose down
 
-# Перезапуск конкретного сервиса
+### Перезапуск конкретного сервиса
 docker-compose restart web
 
-# Вход в контейнер
+### Вход в контейнер
 docker-compose exec web bash
 
-# Выполнение команд Django
+### Выполнение команд Django
 docker-compose exec web python manage.py migrate
 docker-compose exec web python manage.py createsuperuser
 
@@ -91,7 +91,7 @@ docker-compose exec web python manage.py createsuperuser
 
 1. Установка зависимостей
 
-# Python 3.10+, PostgreSQL, Redis
+### Python 3.10+, PostgreSQL, Redis
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 
@@ -101,43 +101,43 @@ pip install -r requirements.txt
 
 2. Настройка БД
 
-# Создаем БД в PostgreSQL
+### Создаем БД в PostgreSQL
 sudo -u postgres psql -c "CREATE DATABASE orders_db;"
 sudo -u postgres psql -c "CREATE USER orders_user WITH PASSWORD 'orders_password';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE orders_db TO orders_user;"
 
 3. Запуск
    
-# Применяем миграции
+#3# Применяем миграции
 python manage.py migrate
 
-# Создаем суперпользователя
+### Создаем суперпользователя
 python manage.py createsuperuser
 
-# Запускаем сервер (в отдельном терминале)
+### Запускаем сервер (в отдельном терминале)
 python manage.py runserver
 
-# Запускаем Celery (в отдельном терминале)
+### Запускаем Celery (в отдельном терминале)
 celery -A orders worker --loglevel=info
 Переменные окружения (файл .env)
 
-# Обязательные
+### Обязательные
 DEBUG=True
 SECRET_KEY=your-secret-key-here
 ALLOWED_HOSTS=localhost,127.0.0.1
 
-# База данных
+### База данных
 DB_NAME=orders_db
 DB_USER=orders_user
 DB_PASSWORD=orders_password
 DB_HOST=db           # для Docker: db, для локально: localhost
 DB_PORT=5432
 
-# Redis
+### Redis
 REDIS_URL=redis://redis:6379/0  # для Docker
 REDIS_URL=redis://localhost:6379/0  # для локально
 
-# Email (для уведомлений)
+### Email (для уведомлений)
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_HOST_USER=your-email@gmail.com
@@ -145,43 +145,43 @@ EMAIL_HOST_PASSWORD=your-app-password
 EMAIL_USE_TLS=True
 DEFAULT_FROM_EMAIL=your-email@gmail.com
 
-# Суперпользователь (создается автоматически)
+### Суперпользователь (создается автоматически)
 DJANGO_SUPERUSER_EMAIL=admin@example.com
 DJANGO_SUPERUSER_PASSWORD=admin123
 API Endpoints
 
-# Аутентификация
+### Аутентификация
 POST	/api/v1/user/register/	Регистрация
 POST	/api/v1/user/login/	Вход
 POST	/api/v1/user/logout/	Выход
 GET	/api/v1/user/profile/	Профиль
 POST	/api/v1/password-reset/	Сброс пароля
 
-# Товары
+### Товары
 GET	/api/v1/products/	Список товаров
 GET	/api/v1/products/search/?search=iPhone	Поиск
 GET	/api/v1/categories/	Категории
 GET	/api/v1/shops/	Магазины
 
-# Корзина и заказы
+### Корзина и заказы
 GET	/api/v1/orders/basket/	Корзина
 POST	/api/v1/orders/add_to_basket/	Добавить товар
 POST	/api/v1/orders/remove_from_basket/	Удалить товар
 POST	/api/v1/orders/confirm/	Подтвердить заказ
 GET	/api/v1/orders/	Список заказов
 
-# Контакты
+### Контакты
 GET	/api/v1/contacts/	Список контактов
 POST	/api/v1/contacts/	Создать контакт
 PUT	/api/v1/contacts/{id}/	Обновить
 DELETE	/api/v1/contacts/{id}/	Удалить
 
-# Для магазинов
+### Для магазинов
 GET	/api/v1/partner/orders/	Заказы магазина
 POST	/api/v1/partner/import_products/	Импорт товаров
 POST	/api/v1/partner/toggle_state/{id}/	Вкл/выкл заказы
 
-# Примеры запросов
+## Примеры запросов
 
 Регистрация
 curl -X POST http://localhost:8000/api/v1/user/register/ \
@@ -195,7 +195,7 @@ curl -X POST http://localhost:8000/api/v1/user/register/ \
     "type": "buyer"
   }'
 Авторизация
-bash
+
 curl -X POST http://localhost:8000/api/v1/user/login/ \
   -H "Content-Type: application/json" \
   -d '{
@@ -203,7 +203,7 @@ curl -X POST http://localhost:8000/api/v1/user/login/ \
     "password": "password123"
   }'
 Добавление в корзину
-bash
+
 curl -X POST http://localhost:8000/api/v1/orders/add_to_basket/ \
   -H "Cookie: sessionid=ваш-session-id" \
   -H "Content-Type: application/json" \
@@ -212,13 +212,13 @@ curl -X POST http://localhost:8000/api/v1/orders/add_to_basket/ \
     "quantity": 2
   }'
 Импорт товаров (для магазина)
-bash
-# Через URL
+
+## Через URL
 curl -X POST http://localhost:8000/api/v1/partner/import_products/ \
   -H "Cookie: sessionid=ваш-session-id" \
   -F "url=https://example.com/price.yaml"
 
-# Через файл
+## Через файл
 curl -X POST http://localhost:8000/api/v1/partner/import_products/ \
   -H "Cookie: sessionid=ваш-session-id" \
   -F "file=@price.yaml"
