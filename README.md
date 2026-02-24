@@ -95,7 +95,7 @@ docker-compose exec web python manage.py createsuperuser
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 
-# venv\Scripts\activate  # Windows
+venv\Scripts\activate  # Windows
 
 pip install -r requirements.txt
 
@@ -135,7 +135,7 @@ DB_PORT=5432
 
 # Redis
 REDIS_URL=redis://redis:6379/0  # для Docker
-# REDIS_URL=redis://localhost:6379/0  # для локально
+REDIS_URL=redis://localhost:6379/0  # для локально
 
 # Email (для уведомлений)
 EMAIL_HOST=smtp.gmail.com
