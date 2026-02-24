@@ -89,9 +89,9 @@ docker-compose exec web python manage.py createsuperuser
 
 Локальный запуск (без Docker)
 
-1. Установка зависимостей
+### 1. Установка зависимостей
 
-### Python 3.10+, PostgreSQL, Redis
+Python 3.10+, PostgreSQL, Redis
 python -m venv venv
 source venv/bin/activate  # Linux/Mac
 
@@ -99,45 +99,45 @@ venv\Scripts\activate  # Windows
 
 pip install -r requirements.txt
 
-2. Настройка БД
+### 2. Настройка БД
 
-### Создаем БД в PostgreSQL
+Создаем БД в PostgreSQL
 sudo -u postgres psql -c "CREATE DATABASE orders_db;"
 sudo -u postgres psql -c "CREATE USER orders_user WITH PASSWORD 'orders_password';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE orders_db TO orders_user;"
 
-3. Запуск
+### 3. Запуск
    
-#3# Применяем миграции
+#### Применяем миграции
 python manage.py migrate
 
-### Создаем суперпользователя
+#### Создаем суперпользователя
 python manage.py createsuperuser
 
-### Запускаем сервер (в отдельном терминале)
+#### Запускаем сервер (в отдельном терминале)
 python manage.py runserver
 
-### Запускаем Celery (в отдельном терминале)
+#### Запускаем Celery (в отдельном терминале)
 celery -A orders worker --loglevel=info
 Переменные окружения (файл .env)
 
-### Обязательные
+#### Обязательные
 DEBUG=True
 SECRET_KEY=your-secret-key-here
 ALLOWED_HOSTS=localhost,127.0.0.1
 
-### База данных
+#### База данных
 DB_NAME=orders_db
 DB_USER=orders_user
 DB_PASSWORD=orders_password
 DB_HOST=db           # для Docker: db, для локально: localhost
 DB_PORT=5432
 
-### Redis
+#### Redis
 REDIS_URL=redis://redis:6379/0  # для Docker
 REDIS_URL=redis://localhost:6379/0  # для локально
 
-### Email (для уведомлений)
+#### Email (для уведомлений)
 EMAIL_HOST=smtp.gmail.com
 EMAIL_PORT=587
 EMAIL_HOST_USER=your-email@gmail.com
@@ -145,32 +145,32 @@ EMAIL_HOST_PASSWORD=your-app-password
 EMAIL_USE_TLS=True
 DEFAULT_FROM_EMAIL=your-email@gmail.com
 
-### Суперпользователь (создается автоматически)
+#### Суперпользователь (создается автоматически)
 DJANGO_SUPERUSER_EMAIL=admin@example.com
 DJANGO_SUPERUSER_PASSWORD=admin123
 API Endpoints
 
-### Аутентификация
+#### Аутентификация
 POST	/api/v1/user/register/	Регистрация
 POST	/api/v1/user/login/	Вход
 POST	/api/v1/user/logout/	Выход
 GET	/api/v1/user/profile/	Профиль
 POST	/api/v1/password-reset/	Сброс пароля
 
-### Товары
+#### Товары
 GET	/api/v1/products/	Список товаров
 GET	/api/v1/products/search/?search=iPhone	Поиск
 GET	/api/v1/categories/	Категории
 GET	/api/v1/shops/	Магазины
 
-### Корзина и заказы
+#### Корзина и заказы
 GET	/api/v1/orders/basket/	Корзина
 POST	/api/v1/orders/add_to_basket/	Добавить товар
 POST	/api/v1/orders/remove_from_basket/	Удалить товар
 POST	/api/v1/orders/confirm/	Подтвердить заказ
 GET	/api/v1/orders/	Список заказов
 
-### Контакты
+#### Контакты
 GET	/api/v1/contacts/	Список контактов
 POST	/api/v1/contacts/	Создать контакт
 PUT	/api/v1/contacts/{id}/	Обновить
@@ -250,7 +250,8 @@ goods:
     price_rrc: 990
     quantity: 50
     
-Полезные ссылки
+## Полезные ссылки
+
 Админка: http://localhost:8000/admin/
 
 API: http://localhost:8000/api/v1/
