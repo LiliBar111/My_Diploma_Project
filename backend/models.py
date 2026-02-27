@@ -81,6 +81,9 @@ class User(AbstractUser):
     # Тип пользователя
     type = models.CharField(choices=USER_TYPE_CHOICES, max_length=5, default='buyer')
 
+    # Добавляю поле для аватара
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
+
     class Meta:
         verbose_name = 'Пользователь'
         verbose_name_plural = 'Пользователи'
@@ -130,6 +133,7 @@ class ProductInfo(models.Model):
     quantity = models.PositiveIntegerField()  # Количество на складе
     price = models.PositiveIntegerField()  # Закупочная цена
     price_rrc = models.PositiveIntegerField()  # Розничная цена
+    image = models.ImageField(upload_to='products/', null=True, blank=True)  # Добавляю изображение товара
 
     class Meta:
         # Гарантирую уникальность комбинации товар-магазин-внешнийID
