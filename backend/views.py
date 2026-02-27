@@ -7,7 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import User, Shop, ProductInfo, Contact, Order, OrderItem
+from .models import User, Shop, Category, ProductInfo, Contact, Order, OrderItem
 from .serializers import (
     UserSerializer, UserRegistrationSerializer, ShopSerializer,
     CategorySerializer, ProductInfoSerializer, ContactSerializer,
