@@ -11,7 +11,7 @@ class UserSerializer(serializers.ModelSerializer):
     """Сериализатор для просмотра информации о пользователе"""
     class Meta:
         model = User
-        fields = ('id', 'email', 'first_name', 'last_name', 'type')
+        fields = ('id', 'email', 'first_name', 'last_name', 'type', 'avatar')
 
 
 class UserRegistrationSerializer(serializers.ModelSerializer):
@@ -60,6 +60,9 @@ class ProductSerializer(serializers.ModelSerializer):
 
 
 class ProductInfoSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)
+    shop = ShopSerializer(read_only=True)
+    image = serializers.ImageField(read_only=True)  # добавляю поле
     """
     Сериализатор для информации о товаре от конкретного магазина.
     Включаю вложенные объекты product и shop.
@@ -69,7 +72,7 @@ class ProductInfoSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = ProductInfo
-        fields = ('id', 'product', 'shop', 'quantity', 'price', 'price_rrc')
+        fields = ('id', 'product', 'shop', 'quantity', 'price', 'price_rrc', 'image')
 
 
 class ContactSerializer(serializers.ModelSerializer):
