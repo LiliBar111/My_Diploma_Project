@@ -104,7 +104,7 @@ docker-compose exec web python manage.py migrate
 docker-compose exec web python manage.py createsuperuser
 Документация ReDoc: http://localhost:8000/redoc/
 
-## Локальный запуск (без Docker)
+## Локальный запуск
 ### 1. Установка зависимостей
 Python 3.10+, PostgreSQL, Redis
 python -m venv venv
