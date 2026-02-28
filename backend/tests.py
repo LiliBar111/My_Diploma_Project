@@ -137,3 +137,103 @@ class UserTests(BaseTestCase):
         response = self.client.post(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertTrue(response.data['status'])
+
+
+class ShopCategoryTests(BaseTestCase):
+    """Тесты для магазинов и категорий"""
+
+    def test_shop_list(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('shop-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)  # один магазин
+
+    def test_shop_toggle_state(self):
+        self.client.force_authenticate(user=self.shop_user)
+        url = reverse('shop-toggle-state', args=[self.shop.id])
+        response = self.client.post(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['status'])
+        self.shop.refresh_from_db()
+        self.assertFalse(self.shop.state)
+
+    def test_category_list(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('category-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+
+class ProductTests(BaseTestCase):
+    """Тесты для товаров и поиска"""
+
+    def test_product_list(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('product-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+
+    def test_product_detail(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('product-detail', args=[self.product_info.id])
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data['id'], self.product_info.id)
+        self.assertEqual(response.data['product']['name'], 'Smartphone')
+
+    def test_product_search_by_name(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('product-search') + '?search=smart'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+
+    def test_product_search_by_category(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('product-search') + f'?category={self.category.id}'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 1)
+
+    def test_product_search_no_results(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('product-search') + '?search=nonexistent'
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['results']), 0)
+
+
+class ContactTests(BaseTestCase):
+    """Тесты для контактов"""
+
+    def test_create_contact(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('contact-list')
+        data = {
+            'city': 'SPb',
+            'street': 'Nevsky',
+            'house': '20',
+            'phone': '+79998887766'
+        }
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(Contact.objects.filter(user=self.buyer).count(), 2)
+
+    def test_list_contacts(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('contact-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+    def test_update_contact(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('contact-detail', args=[self.contact.id])
+        data = {'phone': '+79990001122'}
+        response = self.client.patch(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.contact.refresh_from_db()
+        self.assertEqual(self.contact.phone, '+79990001122')
