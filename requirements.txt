@@ -12,3 +12,10 @@ requests==2.31.0           # Для HTTP запросов
 django-rest-passwordreset==1.3.0  # Готовый модуль сброса пароля
 drf-yasg==1.21.7           # Для генерации документации API
 gunicorn==21.2.0           # WSGI сервер для продакшена
+social-auth-app-django==5.4.0 # Социальная аутентификация
+django-baton==4.0.1 # Улучшенная админка
+easy-thumbnails==2.8.5 # Миниатюры для изображений
+sentry-sdk==1.40.0 # Sentry для отслеживания ошибок
+django-cacheops==7.0 # Кэширование запросов
+django-silk==5.0.4 # Профилирование
+coverage==7.3.2 # Для тестов
