@@ -1,10 +1,11 @@
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Prefetch
 from django.contrib.auth import authenticate, login, logout
 from rest_framework import status, generics, viewsets, filters
 from rest_framework.decorators import api_view, permission_classes, action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.throttling import UserRateThrottle, AnonRateThrottle
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import User, Shop, Category, ProductInfo, Contact, Order, OrderItem
@@ -59,11 +60,19 @@ def user_profile(request):
     return Response(UserSerializer(request.user).data)
 
 
+# Тестовый endpoint для Sentry (выбрасывает исключение)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def sentry_debug(request):
+    raise Exception("Тестовое исключение для Sentry")
+
+
 class ShopViewSet(viewsets.ModelViewSet):
     """ViewSet для работы с магазинами"""
     queryset = Shop.objects.all()
     serializer_class = ShopSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]  # применяем тротлинг
 
     @action(detail=True, methods=['post'])
     def toggle_state(self, request, pk=None):
@@ -79,6 +88,7 @@ class CategoryViewSet(viewsets.ModelViewSet):
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
 
 class ProductInfoViewSet(viewsets.ReadOnlyModelViewSet):
@@ -86,18 +96,20 @@ class ProductInfoViewSet(viewsets.ReadOnlyModelViewSet):
     ViewSet только для чтения информации о товарах.
     Создание и обновление только через импорт.
     """
-    queryset = ProductInfo.objects.select_related('product', 'shop').all()
+    queryset = ProductInfo.objects.select_related('product', 'shop').prefetch_related('product_parameters__parameter').all()
     serializer_class = ProductInfoSerializer
     permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['shop_id', 'product__category_id']
     search_fields = ['product__name']
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]  # для товаров можно и анонимам
 
 
 class ContactViewSet(viewsets.ModelViewSet):
     """ViewSet для работы с контактами пользователя"""
     serializer_class = ContactSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def get_queryset(self):
         """Возвращаю только контакты текущего пользователя"""
@@ -107,10 +119,13 @@ class ContactViewSet(viewsets.ModelViewSet):
 class OrderViewSet(viewsets.ModelViewSet):
     """ViewSet для работы с заказами"""
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     def get_queryset(self):
-        """Возвращаю заказы только текущего пользователя"""
-        return Order.objects.filter(user=self.request.user)
+        """Возвращаю заказы только текущего пользователя с оптимизацией запросов"""
+        return Order.objects.filter(user=self.request.user).select_related('contact').prefetch_related(
+            Prefetch('ordered_items', queryset=OrderItem.objects.select_related('product_info__product', 'product_info__shop'))
+        )
 
     def get_serializer_class(self):
         """Выбираю сериализатор в зависимости от действия"""
@@ -120,6 +135,10 @@ class OrderViewSet(viewsets.ModelViewSet):
     def basket(self, request):
         """Получение корзины текущего пользователя"""
         basket, _ = Order.objects.get_or_create(user=request.user, state='basket')
+        # Оптимизация для корзины
+        basket = Order.objects.filter(id=basket.id).select_related('contact').prefetch_related(
+            Prefetch('ordered_items', queryset=OrderItem.objects.select_related('product_info__product', 'product_info__shop'))
+        ).first()
         return Response(BasketSerializer(basket).data)
 
     @action(detail=False, methods=['post'])
@@ -145,29 +164,60 @@ class OrderViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def confirm(self, request):
-        """Подтверждение заказа"""
+        """
+        Подтверждение заказа.
+        Теперь с проверкой наличия товара на складе.
+        """
         try:
-            with transaction.atomic():  # Использую транзакцию для целостности
-                order = Order.objects.get(
+            with transaction.atomic():
+                # Блокируем заказ и связанные товары для избежания гонок
+                order = Order.objects.select_for_update().get(
                     id=request.data.get('order_id'),
                     user=request.user,
                     state='basket'
                 )
 
+                # Проверяем наличие всех товаров
+                insufficient_items = []
+                for item in order.ordered_items.select_related('product_info').all():
+                    # Блокируем запись товара
+                    product_info = ProductInfo.objects.select_for_update().get(id=item.product_info.id)
+                    if product_info.quantity < item.quantity:
+                        insufficient_items.append({
+                            'product': product_info.product.name,
+                            'available': product_info.quantity,
+                            'requested': item.quantity
+                        })
+
+                if insufficient_items:
+                    return Response({
+                        'status': False,
+                        'errors': 'Недостаточно товара на складе',
+                        'insufficient_items': insufficient_items
+                    }, status=status.HTTP_400_BAD_REQUEST)
+
+                # Списываем товары
+                for item in order.ordered_items.all():
+                    product_info = item.product_info
+                    product_info.quantity -= item.quantity
+                    product_info.save()
+
+                # Меняем статус заказа
                 order.state = 'new'
                 order.save()
 
-                # Асинхронно отправляю email
+                # Асинхронно отправляем email
                 send_order_confirmation_email.delay(order.id)
                 return Response({'status': True})
 
         except Order.DoesNotExist:
-            return Response({'status': False}, status=404)
+            return Response({'status': False, 'errors': 'Заказ не найден'}, status=404)
 
 
 class PartnerViewSet(viewsets.ViewSet):
     """ViewSet для функций поставщика"""
     permission_classes = [IsAuthenticated]
+    throttle_classes = [UserRateThrottle]
 
     @action(detail=False, methods=['post'])
     def import_products(self, request):
@@ -189,10 +239,11 @@ class ProductSearchView(generics.ListAPIView):
     """Расширенный поиск товаров с фильтрацией"""
     serializer_class = ProductInfoSerializer
     permission_classes = [IsAuthenticated]
+    throttle_classes = [AnonRateThrottle, UserRateThrottle]
 
     def get_queryset(self):
-        """Применяю фильтры из запроса"""
-        queryset = ProductInfo.objects.filter(shop__state=True, quantity__gt=0)
+        """Применяю фильтры из запроса с оптимизацией"""
+        queryset = ProductInfo.objects.filter(shop__state=True, quantity__gt=0).select_related('product', 'shop').prefetch_related('product_parameters__parameter')
 
         # Поиск по названию
         search = self.request.query_params.get('search', '')
