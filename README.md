@@ -1,113 +1,131 @@
-# My_Diploma_Project
-
 # Сервис автоматизации закупок
 
-Backend-приложение для автоматизации закупок.
+Backend-приложение для автоматизации закупок в розничной сети. Разработано в рамках дипломного проекта.
 
 ## Содержание
 - [Возможности](#возможности)
 - [Технологии](#технологии)
 - [Быстрый запуск через Docker](#быстрый-запуск-через-docker)
 - [Локальный запуск](#локальный-запуск)
-- [Переменные окружения](#переменные-окружения)
-- [API Endpoints](#api-endpoints)
-- [Примеры запросов](#примеры-запросов)
-- [Структура YAML для импорта](#структура-yaml-для-импорта)
-- [Устранение проблем](#устранение-проблем)
+- [Новые возможности](#новые-возможности)
+- [Тестирование и покрытие кода](#тестирование-и-покрытие-кода)
+- [Полезные ссылки](#полезные-ссылки)
 
 ## Возможности
 
 ### Для покупателей:
 - Регистрация, авторизация, восстановление пароля
-- Просмотр товаров с фильтрацией
+- Подтверждение email при регистрации
+- Просмотр товаров с фильтрацией по категориям, цене, параметрам
 - Корзина (добавление/удаление товаров)
 - Оформление и отслеживание заказов
 - Управление контактами доставки
 - Email-уведомления о статусе заказа
 
 ### Для поставщиков:
-- Импорт товаров из YAML (по URL или файл)
+- Импорт товаров из YAML (по URL или загрузка файла)
 - Включение/отключение приема заказов
 - Просмотр заказов с своими товарами
 - Обновление цен и количества
 
+### Дополнительные улучшения
+-  **Тротлинг** – ограничение частоты запросов для защиты от брутфорса
+-  **Социальная аутентификация** – вход через Google и GitHub
+-  **Улучшенная админка** – современный интерфейс с django-baton
+-  **Изображения товаров и аватары** – загрузка и автоматическое создание миниатюр
+-  **Sentry** – отслеживание ошибок в production
+-  **Кэширование запросов** – ускорение ответов с помощью Redis
+-  **Профилирование** – анализ производительности с django-silk
+-  **Исправление N+1 запросов** – оптимизация работы с БД
+-  **Проверка наличия товара** при подтверждении заказа (предотвращает отрицательные остатки)
+
 ## Технологии
 
-- Python 3.10, Django 4.2, Django REST Framework
-- PostgreSQL 15, Redis 7, Celery 5.3
-- Docker, Docker Compose
-- JWT аутентификация, Swagger документация
+- **Backend:** Python 3.10, Django 4.2, Django REST Framework
+- **База данных:** PostgreSQL 15
+- **Асинхронные задачи:** Celery 5.3, Redis 7
+- **Контейнеризация:** Docker, Docker Compose
+- **Веб-сервер:** Nginx, Gunicorn
+- **Документация:** drf-yasg (Swagger/ReDoc)
+- **Социальная аутентификация:** `social-auth-app-django`
+- **Улучшенная админка:** `django-baton`
+- **Изображения:** `easy-thumbnails`
+- **Мониторинг ошибок:** `sentry-sdk`
+- **Кэширование:** `django-cacheops`
+- **Профилирование:** `django-silk`
 
 ## Быстрый запуск через Docker
 
 ### Требования
 - Docker 20.10+ и Docker Compose 2.0+
 
-# Команды для запуска
-
-## 1. Клонируем репозиторий
+#### 1. Клонируем репозиторий
 git clone <url-репозитория>
 cd orders
 
-## 2. Создаем .env файл
+#### 2. Создаем .env файл из примера
 cp .env.example .env
 
-## 3. Запускаем контейнеры
+#### 3. Запускаем контейнеры
 docker-compose up -d --build
 
-## 4. Проверяем что все работает
+#### 4. Применяем миграции
+docker-compose exec web python manage.py migrate
+
+#### 5. Создаем суперпользователя (автоматически из .env)
+docker-compose exec web python manage.py initadmin
+
+#### 6. Проверяем что все работает
 docker-compose ps
 
-## 5. Открываем в браузере
-echo "Админка: http://localhost:8000/admin/"
-echo "API: http://localhost:8000/api/v1/"
-echo "Документация: http://localhost:8000/swagger/"
+### Доступные сервисы
+Админка: http://localhost:8000/admin/ (admin@example.com / admin123)
 
-Данные для входа в админку:
+API: http://localhost:8000/api/v1/
 
-Email: admin@example.com
+Документация Swagger: http://localhost:8000/swagger/
 
-Пароль: admin123
+### Полезные команды Docker
 
-Полезные команды Docker
-
-### Просмотр логов
+#### Просмотр логов
 docker-compose logs -f
 
-### Остановка
+#### Остановка
 docker-compose down
 
-### Перезапуск конкретного сервиса
+#### Перезапуск конкретного сервиса
 docker-compose restart web
 
-### Вход в контейнер
+#### Вход в контейнер
 docker-compose exec web bash
 
-### Выполнение команд Django
+#### Выполнение команд Django
 docker-compose exec web python manage.py migrate
 docker-compose exec web python manage.py createsuperuser
+Документация ReDoc: http://localhost:8000/redoc/
 
-Локальный запуск (без Docker)
-
+## Локальный запуск
 ### 1. Установка зависимостей
-
 Python 3.10+, PostgreSQL, Redis
 python -m venv venv
+
 source venv/bin/activate  # Linux/Mac
+
+**или**
 
 venv\Scripts\activate  # Windows
 
 pip install -r requirements.txt
 
-### 2. Настройка БД
+### 2. Настройка базы данных
+Создаем БД в PostgreSQL:
 
-Создаем БД в PostgreSQL
 sudo -u postgres psql -c "CREATE DATABASE orders_db;"
 sudo -u postgres psql -c "CREATE USER orders_user WITH PASSWORD 'orders_password';"
 sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE orders_db TO orders_user;"
 
 ### 3. Запуск
-   
+
 #### Применяем миграции
 python manage.py migrate
 
@@ -119,143 +137,57 @@ python manage.py runserver
 
 #### Запускаем Celery (в отдельном терминале)
 celery -A orders worker --loglevel=info
-Переменные окружения (файл .env)
 
-#### Обязательные
-DEBUG=True
-SECRET_KEY=your-secret-key-here
-ALLOWED_HOSTS=localhost,127.0.0.1
+## Новые возможности
+#### Тротлинг (ограничение запросов)
+Анонимные пользователи: не более 100 запросов в день
+Авторизованные пользователи: не более 1000 запросов в день
+При превышении лимита API возвращает статус 429 Too Many Requests.
 
-#### База данных
-DB_NAME=orders_db
-DB_USER=orders_user
-DB_PASSWORD=orders_password
-DB_HOST=db           # для Docker: db, для локально: localhost
-DB_PORT=5432
+#### Социальная аутентификация
+Вход через Google и GitHub доступен по эндпоинтам:
+/auth/login/google-oauth2/
+/auth/login/github/
 
-#### Redis
-REDIS_URL=redis://redis:6379/0  # для Docker
-REDIS_URL=redis://localhost:6379/0  # для локально
+#### Улучшенная админ-панель (django-baton)
+Современный интерфейс с выпадающими фильтрами, подтверждением несохранённых изменений, предпросмотром изображений и настраиваемым меню.
 
-#### Email (для уведомлений)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_HOST_USER=your-email@gmail.com
-EMAIL_HOST_PASSWORD=your-app-password
-EMAIL_USE_TLS=True
-DEFAULT_FROM_EMAIL=your-email@gmail.com
+#### Загрузка изображений и миниатюры
+Пользователи могут загружать аватары, товары – изображения. Автоматически создаются миниатюры (100x100 для аватаров, 200x200 для товаров).
 
-#### Суперпользователь (создается автоматически)
-DJANGO_SUPERUSER_EMAIL=admin@example.com
-DJANGO_SUPERUSER_PASSWORD=admin123
-API Endpoints
+#### Отслеживание ошибок через Sentry
+Все необработанные исключения отправляются в Sentry. Тестовый эндпоинт:
+GET /api/v1/sentry-debug/ (выбрасывает исключение для проверки).
 
-#### Аутентификация
-POST	/api/v1/user/register/	Регистрация
-POST	/api/v1/user/login/	Вход
-POST	/api/v1/user/logout/	Выход
-GET	/api/v1/user/profile/	Профиль
-POST	/api/v1/password-reset/	Сброс пароля
+#### Кэширование запросов (django-cacheops)
+ProductInfo при получении одного объекта – кэш на 15 минут
+Category и Shop – кэш на 1 час
 
-#### Товары
-GET	/api/v1/products/	Список товаров
-GET	/api/v1/products/search/?search=iPhone	Поиск
-GET	/api/v1/categories/	Категории
-GET	/api/v1/shops/	Магазины
+#### Профилирование с django-silk
+При DEBUG = True доступен интерфейс /silk/ для анализа запросов, SQL и времени выполнения.
 
-#### Корзина и заказы
-GET	/api/v1/orders/basket/	Корзина
-POST	/api/v1/orders/add_to_basket/	Добавить товар
-POST	/api/v1/orders/remove_from_basket/	Удалить товар
-POST	/api/v1/orders/confirm/	Подтвердить заказ
-GET	/api/v1/orders/	Список заказов
+#### Проверка наличия товара при подтверждении заказа
+Заказ не будет подтверждён, если на складе недостаточно товара. Возвращается ошибка с деталями.
 
-#### Контакты
-GET	/api/v1/contacts/	Список контактов
-POST	/api/v1/contacts/	Создать контакт
-PUT	/api/v1/contacts/{id}/	Обновить
-DELETE	/api/v1/contacts/{id}/	Удалить
+## Тестирование и покрытие кода
 
-### Для магазинов
-GET	/api/v1/partner/orders/	Заказы магазина
-POST	/api/v1/partner/import_products/	Импорт товаров
-POST	/api/v1/partner/toggle_state/{id}/	Вкл/выкл заказы
+### Установка coverage (если ещё не установлен)
+pip install coverage
 
-## Примеры запросов
+### Запуск тестов с измерением покрытия
+coverage run --source='backend' manage.py test backend
 
-Регистрация
-curl -X POST http://localhost:8000/api/v1/user/register/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "password123",
-    "password2": "password123",
-    "first_name": "Иван",
-    "last_name": "Петров",
-    "type": "buyer"
-  }'
-Авторизация
+### Просмотр отчёта
+coverage report
 
-curl -X POST http://localhost:8000/api/v1/user/login/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "user@example.com",
-    "password": "password123"
-  }'
-Добавление в корзину
+### Создание HTML отчёта
+coverage html
 
-curl -X POST http://localhost:8000/api/v1/orders/add_to_basket/ \
-  -H "Cookie: sessionid=ваш-session-id" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "product_info_id": 1,
-    "quantity": 2
-  }'
-Импорт товаров (для магазина)
-
-## Через URL
-curl -X POST http://localhost:8000/api/v1/partner/import_products/ \
-  -H "Cookie: sessionid=ваш-session-id" \
-  -F "url=https://example.com/price.yaml"
-
-## Через файл
-curl -X POST http://localhost:8000/api/v1/partner/import_products/ \
-  -H "Cookie: sessionid=ваш-session-id" \
-  -F "file=@price.yaml"
-Структура YAML для импорта
-yaml
-shop: Название магазина
-
-categories:
-  - id: 1
-    name: Электроника
-  - id: 2
-    name: Аксессуары
-
-goods:
-  - id: 1001
-    category: 1
-    name: Смартфон Samsung Galaxy S23
-    price: 70000
-    price_rrc: 74990
-    quantity: 10
-    parameters:
-      Цвет: черный
-      Память: 256GB
-  
-  - id: 1002
-    category: 2
-    name: Чехол силиконовый
-    price: 500
-    price_rrc: 990
-    quantity: 50
-    
 ## Полезные ссылки
+*Админка: http://localhost:8000/admin/*
 
-Админка: http://localhost:8000/admin/
+*API: http://localhost:8000/api/v1/*
 
-API: http://localhost:8000/api/v1/
+*Swagger: http://localhost:8000/swagger/*
 
-Swagger: http://localhost:8000/swagger/
-
-ReDoc: http://localhost:8000/redoc/
+*ReDoc: http://localhost:8000/redoc/*
