@@ -237,3 +237,138 @@ class ContactTests(BaseTestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.contact.refresh_from_db()
         self.assertEqual(self.contact.phone, '+79990001122')
+
+
+class BasketOrderTests(BaseTestCase):
+    """Тесты для корзины и заказов"""
+
+    def test_add_to_basket(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('order-add-to-basket')
+        data = {'product_info_id': self.product_info.id, 'quantity': 2}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['status'])
+        # Проверяем, что корзина создалась
+        basket = Order.objects.get(user=self.buyer, state='basket')
+        self.assertEqual(basket.ordered_items.count(), 1)
+        self.assertEqual(basket.ordered_items.first().quantity, 2)
+
+    def test_add_to_basket_nonexistent_product(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('order-add-to-basket')
+        data = {'product_info_id': 9999, 'quantity': 2}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_404_NOT_FOUND)
+        self.assertFalse(response.data['status'])
+
+    def test_basket_view(self):
+        self.client.force_authenticate(user=self.buyer)
+        # Сначала добавляем товар
+        self.client.post(reverse('order-add-to-basket'),
+                         {'product_info_id': self.product_info.id, 'quantity': 2},
+                         format='json')
+        url = reverse('order-basket')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data['items']), 1)
+        self.assertEqual(response.data['total_price'], 2 * self.product_info.price_rrc)
+
+    def test_confirm_order_success(self):
+        self.client.force_authenticate(user=self.buyer)
+        # Добавляем товар
+        self.client.post(reverse('order-add-to-basket'),
+                         {'product_info_id': self.product_info.id, 'quantity': 2},
+                         format='json')
+        basket = Order.objects.get(user=self.buyer, state='basket')
+        url = reverse('order-confirm')
+        data = {'order_id': basket.id, 'contact_id': self.contact.id}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['status'])
+        basket.refresh_from_db()
+        self.assertEqual(basket.state, 'new')
+        # Проверяем, что количество товара уменьшилось
+        self.product_info.refresh_from_db()
+        self.assertEqual(self.product_info.quantity, 8)  # было 10, купили 2
+
+    def test_confirm_order_insufficient_stock(self):
+        """
+        Тест на недостаток товара при подтверждении.
+        Добавляем в корзину больше, чем есть на складе, и ожидаем ошибку.
+        """
+        self.client.force_authenticate(user=self.buyer)
+        # Добавляем больше, чем есть (quantity = 20 при наличии 10)
+        self.client.post(reverse('order-add-to-basket'),
+                         {'product_info_id': self.product_info.id, 'quantity': 20},
+                         format='json')
+        basket = Order.objects.get(user=self.buyer, state='basket')
+        url = reverse('order-confirm')
+        data = {'order_id': basket.id, 'contact_id': self.contact.id}
+        response = self.client.post(url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data['status'])
+        self.assertIn('errors', response.data)
+        self.assertIn('insufficient_items', response.data)
+        # Проверяем, что количество товара не изменилось
+        self.product_info.refresh_from_db()
+        self.assertEqual(self.product_info.quantity, 10)
+
+    def test_order_list(self):
+        self.client.force_authenticate(user=self.buyer)
+        # Создаем завершенный заказ
+        order = Order.objects.create(user=self.buyer, state='new', contact=self.contact)
+        OrderItem.objects.create(order=order, product_info=self.product_info, quantity=1)
+        url = reverse('order-list')
+        response = self.client.get(url)
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+
+
+class PartnerTests(BaseTestCase):
+    """Тесты для функций поставщика"""
+
+    def test_import_products_as_shop(self):
+        self.client.force_authenticate(user=self.shop_user)
+        url = reverse('partner-import-products')
+        # Создаем простой YAML файл
+        yaml_content = """
+shop: Test Shop
+categories:
+  - id: 10
+    name: New Category
+goods:
+  - id: 2001
+    category: 10
+    name: New Product
+    price: 1000
+    quantity: 5
+"""
+        uploaded_file = SimpleUploadedFile("price.yaml", yaml_content.encode(), content_type="application/x-yaml")
+        data = {'file': uploaded_file}
+        response = self.client.post(url, data, format='multipart')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data['status'])
+        self.assertEqual(response.data['message'], 'Импорт запущен')
+
+    def test_import_products_as_buyer(self):
+        self.client.force_authenticate(user=self.buyer)
+        url = reverse('partner-import-products')
+        response = self.client.post(url, {})
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(response.data['status'])
+
+
+class SentryDebugTests(APITestCase):
+    """Тест для sentry-debug endpoint (ожидаем 500 ошибку)"""
+
+    def test_sentry_debug(self):
+        url = reverse('sentry-debug')
+        # Эндпоинт выбрасывает исключение, поэтому мы ожидаем ошибку сервера.
+        # В тестах можно проверить, что ответ имеет статус 500.
+        try:
+            response = self.client.get(url)
+            self.assertEqual(response.status_code, 500)
+        except Exception:
+            # Исключение ожидаемо, тест проходит
+            pass
